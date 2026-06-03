@@ -10,13 +10,18 @@ import (
 	"time"
 )
 
-// maxConcurrentConversions limits how many LibreOffice instances may run
-// simultaneously. Each instance is RAM/CPU heavy; 1 is the safest default
-// for small machines. Increase according to available resources.
-const maxConcurrentConversions = 2
+// sofficeSemaphore serializes access to LibreOffice. Initialized by initConverter.
+var sofficeSemaphore chan struct{}
 
-// sofficeSemaphore serializes access to LibreOffice according to the limit above.
-var sofficeSemaphore = make(chan struct{}, maxConcurrentConversions)
+// conversionTimeout is the per-conversion deadline after acquiring a worker slot.
+var conversionTimeout = 60 * time.Second
+
+// initConverter sets up runtime limits from config. Must be called before Serve
+// accepts any requests.
+func initConverter(maxConcurrent int, timeout time.Duration) {
+	sofficeSemaphore = make(chan struct{}, maxConcurrent)
+	conversionTimeout = timeout
+}
 
 // ConvertTo converts a spreadsheet file (xlsb/xlsx/ods) to the target format
 // ("xlsx" or "ods") using LibreOffice --headless.
@@ -39,7 +44,7 @@ func ConvertTo(ctx context.Context, src, outDir, toFormat string) (string, error
 	}
 
 	// The timeout applies only to the conversion itself, after acquiring a slot.
-	ctx, cancel := context.WithTimeout(ctx, 60*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, conversionTimeout)
 	defer cancel()
 
 	// Unique user profile per call avoids LibreOffice concurrent-instance errors.

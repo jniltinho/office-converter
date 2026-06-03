@@ -10,21 +10,27 @@ Complete documentation for running, configuring, and deploying office-converter.
 ./office-converter serve [flags]
 ```
 
-| Flag         | Description                                             | Default          | Env var                  |
-|--------------|---------------------------------------------------------|------------------|--------------------------|
-| `--port`     | TCP port to listen on                                   | `8080`           | `OFFICE_PORT`            |
-| `--host`     | Host/interface to bind to                               | (all interfaces) | `OFFICE_HOST`            |
-| `--tls`      | Enable HTTPS                                            | `false`          | `OFFICE_TLS_ENABLED`     |
-| `--tls-cert` | Path to TLS certificate file                            | —                | `OFFICE_TLS_CERT`        |
-| `--tls-key`  | Path to TLS private key file                            | —                | `OFFICE_TLS_KEY`         |
-| `--swagger`  | Enable `/docs` and `/api/v1/openapi.json`               | `false`          | `OFFICE_SWAGGER_ENABLED` |
-| `--config`   | Path to `config.toml` (auto-detected in cwd if absent) | —                | `OFFICE_CONFIG`          |
+| Flag                           | Description                                             | Default          | Env var                            |
+|--------------------------------|---------------------------------------------------------|------------------|------------------------------------|
+| `--port`                       | TCP port to listen on                                   | `8080`           | `OFFICE_PORT`                      |
+| `--host`                       | Host/interface to bind to                               | (all interfaces) | `OFFICE_HOST`                      |
+| `--conversion-timeout`         | Per-conversion deadline after acquiring a slot          | `60s`            | `OFFICE_CONVERSION_TIMEOUT`        |
+| `--max-upload-size`            | Maximum upload size in bytes                            | `104857600` (100 MiB) | `OFFICE_MAX_UPLOAD_SIZE`      |
+| `--max-concurrent-conversions` | Maximum parallel LibreOffice instances                  | `2`              | `OFFICE_MAX_CONCURRENT_CONVERSIONS`|
+| `--tls`                        | Enable HTTPS                                            | `false`          | `OFFICE_TLS_ENABLED`               |
+| `--tls-cert`                   | Path to TLS certificate file                            | —                | `OFFICE_TLS_CERT`                  |
+| `--tls-key`                    | Path to TLS private key file                            | —                | `OFFICE_TLS_KEY`                   |
+| `--swagger`                    | Enable `/docs` and `/api/v1/openapi.json`               | `false`          | `OFFICE_SWAGGER_ENABLED`           |
+| `--config`                     | Path to `config.toml` (auto-detected in cwd if absent) | —                | `OFFICE_CONFIG`                    |
 
 Examples:
 
 ```bash
 ./office-converter serve --port 9000
 ./office-converter serve --host 127.0.0.1 --port 8080
+./office-converter serve --conversion-timeout 120s
+./office-converter serve --max-upload-size 209715200   # 200 MiB
+./office-converter serve --max-concurrent-conversions 4
 ./office-converter serve --tls --tls-cert /certs/server.crt --tls-key /certs/server.key
 ./office-converter serve --swagger
 ./office-converter serve --config /etc/office-converter/config.toml
@@ -59,15 +65,18 @@ PORT=9000 make docker-run
 
 ### All supported environment variables
 
-| Variable                | Description                           | Default  |
-|-------------------------|---------------------------------------|----------|
-| `OFFICE_PORT`           | HTTP port                             | `8080`   |
-| `OFFICE_HOST`           | Bind address                          | (all)    |
-| `OFFICE_TLS_ENABLED`    | Enable HTTPS (`true`/`false`)         | `false`  |
-| `OFFICE_TLS_CERT`       | Path to TLS certificate file          | —        |
-| `OFFICE_TLS_KEY`        | Path to TLS private key file          | —        |
-| `OFFICE_SWAGGER_ENABLED`| Enable Swagger UI and OpenAPI JSON    | `false`  |
-| `OFFICE_CONFIG`         | Path to a `config.toml` file          | —        |
+| Variable                             | Description                           | Default             |
+|--------------------------------------|---------------------------------------|---------------------|
+| `OFFICE_PORT`                        | HTTP port                             | `8080`              |
+| `OFFICE_HOST`                        | Bind address                          | (all)               |
+| `OFFICE_CONVERSION_TIMEOUT`          | Per-conversion deadline               | `60s`               |
+| `OFFICE_MAX_UPLOAD_SIZE`             | Maximum upload size in bytes          | `104857600` (100 MiB)|
+| `OFFICE_MAX_CONCURRENT_CONVERSIONS`  | Maximum parallel LibreOffice instances| `2`                 |
+| `OFFICE_TLS_ENABLED`                 | Enable HTTPS (`true`/`false`)         | `false`             |
+| `OFFICE_TLS_CERT`                    | Path to TLS certificate file          | —                   |
+| `OFFICE_TLS_KEY`                     | Path to TLS private key file          | —                   |
+| `OFFICE_SWAGGER_ENABLED`             | Enable Swagger UI and OpenAPI JSON    | `false`             |
+| `OFFICE_CONFIG`                      | Path to a `config.toml` file          | —                   |
 
 ### Enable TLS
 
@@ -149,6 +158,9 @@ A `config.toml` in the working directory is loaded automatically. Use `--config`
 host = ""
 port = 8080
 graceful_timeout = "15s"
+conversion_timeout = "60s"
+max_upload_size = 104857600   # bytes (100 MiB)
+max_concurrent_conversions = 2
 
 [tls]
 enabled = false
@@ -209,12 +221,12 @@ curl -F "file=@spreadsheet.xlsb" "http://localhost:8080/api/v1/convert?format=js
 
 ## Limits and behavior
 
-| Setting               | Value                                            |
-|-----------------------|--------------------------------------------------|
-| Maximum file size     | 100 MiB                                          |
-| Concurrent conversions| 2 (each uses its own LibreOffice user profile)   |
-| Conversion timeout    | 60 s (after acquiring a worker slot)             |
-| Graceful shutdown     | 15 s to finish in-flight requests                |
+| Setting               | Default                                          | Configurable via                       |
+|-----------------------|--------------------------------------------------|----------------------------------------|
+| Maximum file size     | 100 MiB                                          | `--max-upload-size` / `OFFICE_MAX_UPLOAD_SIZE` |
+| Concurrent conversions| 2 (each uses its own LibreOffice user profile)   | `--max-concurrent-conversions` / `OFFICE_MAX_CONCURRENT_CONVERSIONS` |
+| Conversion timeout    | 60 s (after acquiring a worker slot)             | `--conversion-timeout` / `OFFICE_CONVERSION_TIMEOUT` |
+| Graceful shutdown     | 15 s to finish in-flight requests                | `server.graceful_timeout` in config    |
 
 ---
 

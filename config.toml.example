@@ -3,9 +3,12 @@
 # Precedence (highest to lowest): CLI flag > environment variable > config file > default
 
 [server]
-# host = ""               # interface to bind (empty = all interfaces, e.g. "127.0.0.1")
-port             = 8080   # env: OFFICE_PORT
-graceful_timeout = "15s"  # how long to wait for in-flight requests on shutdown
+# host = ""                      # interface to bind (empty = all interfaces, e.g. "127.0.0.1")
+port                      = 8080         # env: OFFICE_PORT
+graceful_timeout          = "15s"        # how long to wait for in-flight requests on shutdown
+conversion_timeout        = "60s"        # per-conversion deadline after acquiring a slot  (env: OFFICE_CONVERSION_TIMEOUT)
+max_upload_size           = 104857600    # maximum upload size in bytes, 100 MiB            (env: OFFICE_MAX_UPLOAD_SIZE)
+max_concurrent_conversions = 2           # maximum parallel LibreOffice instances           (env: OFFICE_MAX_CONCURRENT_CONVERSIONS)
 
 [tls]
 enabled   = false         # env: OFFICE_TLS_ENABLED  (true/false)
@@ -13,4 +16,4 @@ enabled   = false         # env: OFFICE_TLS_ENABLED  (true/false)
 # key_file  = "/etc/ssl/private/server.key" # env: OFFICE_TLS_KEY
 
 [swagger]
-enabled = false           # exposes /docs and /api/openapi.json (default: false)
+enabled = false           # exposes /docs and /api/v1/openapi.json  (env: OFFICE_SWAGGER_ENABLED)

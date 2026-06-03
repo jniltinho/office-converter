@@ -17,6 +17,9 @@ import (
 
 // Serve configures and starts the Echo HTTP(S) server, blocking until shutdown.
 func Serve(cfg Config) error {
+	initConverter(cfg.Server.MaxConcurrentConversions, cfg.Server.ConversionTimeout)
+	maxUploadBytes = cfg.Server.MaxUploadSize
+
 	address := fmt.Sprintf(":%d", cfg.Server.Port)
 	if cfg.Server.Host != "" {
 		address = fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)

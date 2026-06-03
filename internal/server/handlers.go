@@ -19,8 +19,8 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-// maxUploadBytes is the maximum allowed size for uploaded files (100 MiB).
-const maxUploadBytes = 100 << 20 // 100 MiB
+// maxUploadBytes is the maximum allowed size for uploaded files. Initialized by Serve.
+var maxUploadBytes int64 = 100 << 20 // 100 MiB default
 
 type convertRequest struct {
 	File     string `json:"file"`

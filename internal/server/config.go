@@ -16,9 +16,12 @@ type Config struct {
 
 // ServerConfig controls the HTTP listener address and shutdown behaviour.
 type ServerConfig struct {
-	Host            string        `mapstructure:"host"`
-	Port            int           `mapstructure:"port"`
-	GracefulTimeout time.Duration `mapstructure:"graceful_timeout"`
+	Host                   string        `mapstructure:"host"`
+	Port                   int           `mapstructure:"port"`
+	GracefulTimeout        time.Duration `mapstructure:"graceful_timeout"`
+	ConversionTimeout      time.Duration `mapstructure:"conversion_timeout"`
+	MaxUploadSize          int64         `mapstructure:"max_upload_size"`
+	MaxConcurrentConversions int         `mapstructure:"max_concurrent_conversions"`
 }
 
 // TLSConfig controls HTTPS termination.
