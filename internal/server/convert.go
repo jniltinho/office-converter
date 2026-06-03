@@ -1,3 +1,4 @@
+// This file contains the LibreOffice conversion logic used by the HTTP handlers.
 package server
 
 import (
@@ -75,7 +76,8 @@ func ConvertTo(ctx context.Context, src, outDir, toFormat string) (string, error
 	return dst, nil
 }
 
-// ConvertXLSB is a compatibility wrapper for .xlsb -> .xlsx conversion.
+// ConvertXLSB converts a .xlsb file to .xlsx. It is a thin wrapper around
+// [ConvertTo] kept for call-site clarity.
 func ConvertXLSB(ctx context.Context, src, outDir string) (string, error) {
 	return ConvertTo(ctx, src, outDir, "xlsx")
 }

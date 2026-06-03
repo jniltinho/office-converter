@@ -31,7 +31,7 @@ tags:
     description: Health check
 
 paths:
-  /api/convert:
+  /api/v1/convert:
     post:
       summary: Smart convert (auto-detect format)
       description: |
@@ -75,7 +75,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /api/convert/xlsb-to-xlsx:
+  /api/v1/convert/xlsb-to-xlsx:
     post:
       summary: Convert XLSB → XLSX
       operationId: convertXlsbToXlsx
@@ -111,7 +111,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /api/convert/xlsx-to-ods:
+  /api/v1/convert/xlsx-to-ods:
     post:
       summary: Convert XLSX → ODS
       operationId: convertXlsxToOds
@@ -147,7 +147,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalError'
 
-  /api/convert/ods-to-xlsx:
+  /api/v1/convert/ods-to-xlsx:
     post:
       summary: Convert ODS → XLSX
       operationId: convertOdsToXlsx
@@ -237,7 +237,7 @@ components:
           type: string
           description: |
             Original filename with extension. Required when using the smart
-            `/api/convert` endpoint so the server can infer the source format.
+            `/api/v1/convert` endpoint so the server can infer the source format.
           example: report.xlsb
 
     ConvertResponse:

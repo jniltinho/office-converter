@@ -48,6 +48,8 @@ docker build -t office-converter .
 make docker-build
 ```
 
+A imagem usa build em dois estágios: um builder `golang:1.26-bookworm` gera um binário estático, e o estágio final é `debian:12-slim` com apenas `libreoffice-calc` e fontes mínimas (~350 MB). O servidor roda como usuário sem privilégios (`uid 10001`).
+
 ## Executando
 
 ### Binário
@@ -79,16 +81,95 @@ make run ARGS="--port 9000"
 
 ### Docker
 
+#### Execução básica
+
 ```bash
 docker run --rm -p 8080:8080 office-converter
-
-# Porta personalizada
-PORT=9000 make docker-run
-# ou
-docker run --rm -p 9000:9000 office-converter --port 9000
 ```
 
-O container roda como usuário sem privilégios (non-root).
+#### Porta customizada via variável de ambiente
+
+```bash
+docker run --rm -p 9000:9000 -e OFFICE_PORT=9000 office-converter
+# ou usando o Make
+PORT=9000 make docker-run
+```
+
+#### Variáveis de ambiente suportadas
+
+| Variável              | Descrição                                 | Padrão    |
+|-----------------------|-------------------------------------------|-----------|
+| `OFFICE_PORT`         | Porta HTTP                                | `8080`    |
+| `OFFICE_HOST`         | Endereço de bind                          | (todas)   |
+| `OFFICE_TLS_ENABLED`  | Habilitar HTTPS (`true`/`false`)          | `false`   |
+| `OFFICE_TLS_CERT`     | Caminho para o certificado TLS            | —         |
+| `OFFICE_TLS_KEY`      | Caminho para a chave privada TLS          | —         |
+| `OFFICE_CONFIG`       | Caminho para um arquivo `config.toml`     | —         |
+
+#### Montar um `config.toml`
+
+```bash
+docker run --rm -p 8080:8080 \
+  -v "$(pwd)/config.toml:/home/appuser/config.toml:ro" \
+  -e OFFICE_CONFIG=/home/appuser/config.toml \
+  office-converter
+```
+
+#### Habilitar TLS
+
+```bash
+docker run --rm -p 8443:8443 \
+  -v /etc/ssl/certs/server.crt:/certs/server.crt:ro \
+  -v /etc/ssl/private/server.key:/certs/server.key:ro \
+  -e OFFICE_PORT=8443 \
+  -e OFFICE_TLS_ENABLED=true \
+  -e OFFICE_TLS_CERT=/certs/server.crt \
+  -e OFFICE_TLS_KEY=/certs/server.key \
+  office-converter
+```
+
+#### Docker Compose
+
+```yaml
+services:
+  office-converter:
+    image: office-converter:latest
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      OFFICE_PORT: "8080"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+```
+
+Execute com:
+
+```bash
+docker compose up -d
+docker compose logs -f
+```
+
+#### Health check
+
+O endpoint `/healthz` é adequado para Docker, probes de liveness/readiness do Kubernetes e load balancers:
+
+```bash
+# Exemplo de liveness probe no Kubernetes (spec do Pod)
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 10
+  periodSeconds: 30
+```
+
+O container roda como usuário sem privilégios (`uid 10001`).
 
 ## Interface Web
 
@@ -104,10 +185,10 @@ Acesse `http://localhost:8080` no navegador.
 
 | Método | Caminho                              | Descrição                                      |
 |--------|--------------------------------------|------------------------------------------------|
-| POST   | `/api/convert`                       | Endpoint inteligente (detecta a direção)       |
-| POST   | `/api/convert/xlsb-to-xlsx`          | Converte `.xlsb` → `.xlsx`                     |
-| POST   | `/api/convert/xlsx-to-ods`           | Converte `.xlsx` → `.ods`                      |
-| POST   | `/api/convert/ods-to-xlsx`           | Converte `.ods` → `.xlsx`                      |
+| POST   | `/api/v1/convert`                    | Endpoint inteligente (detecta a direção)       |
+| POST   | `/api/v1/convert/xlsb-to-xlsx`       | Converte `.xlsb` → `.xlsx`                     |
+| POST   | `/api/v1/convert/xlsx-to-ods`        | Converte `.xlsx` → `.ods`                      |
+| POST   | `/api/v1/convert/ods-to-xlsx`        | Converte `.ods` → `.xlsx`                      |
 | GET    | `/healthz`                           | Health check (para load balancers / Kubernetes)|
 
 ### Exemplos com curl
@@ -119,12 +200,12 @@ Aqui estão exemplos práticos e prontos para copiar usando `curl`.
 ```bash
 # Endpoint explícito: .xlsb → .xlsx
 curl -F "file=@planilha.xlsb" \
-     http://localhost:8080/api/convert/xlsb-to-xlsx \
+     http://localhost:8080/api/v1/convert/xlsb-to-xlsx \
      -o planilha.xlsx
 
 # Endpoint inteligente (detecta automaticamente o formato de saída)
 curl -F "file=@dados.xlsb" \
-     http://localhost:8080/api/convert \
+     http://localhost:8080/api/v1/convert \
      -o dados.xlsx
 ```
 
@@ -133,11 +214,11 @@ curl -F "file=@dados.xlsb" \
 ```bash
 # Ver a resposta JSON completa
 curl -F "file=@planilha.xlsb" \
-     "http://localhost:8080/api/convert/xlsb-to-xlsx?format=json" | jq .
+     "http://localhost:8080/api/v1/convert/xlsb-to-xlsx?format=json" | jq .
 
 # Extrair e salvar o arquivo em um único comando
 curl -F "file=@planilha.xlsb" \
-     "http://localhost:8080/api/convert/xlsb-to-xlsx?format=json" \
+     "http://localhost:8080/api/v1/convert/xlsb-to-xlsx?format=json" \
      | jq -r '.data' | base64 -d > planilha_convertida.xlsx
 ```
 
@@ -148,7 +229,7 @@ Aqui vão exemplos focados na API JSON pura.
 **Converter .xlsb → .xlsx usando a API JSON**
 
 ```bash
-curl -X POST http://localhost:8080/api/convert/xlsb-to-xlsx \
+curl -X POST http://localhost:8080/api/v1/convert/xlsb-to-xlsx \
   -H "Content-Type: application/json" \
   -d "{\"file\":\"$(base64 -w0 planilha.xlsb)\",\"filename\":\"planilha.xlsb\"}" \
   | jq -r '.data' | base64 -d > planilha.xlsx
@@ -157,7 +238,7 @@ curl -X POST http://localhost:8080/api/convert/xlsb-to-xlsx \
 **Usando o endpoint inteligente `/api/convert` (detecta a direção automaticamente)**
 
 ```bash
-curl -X POST http://localhost:8080/api/convert \
+curl -X POST http://localhost:8080/api/v1/convert \
   -H "Content-Type: application/json" \
   -d @- <<EOF | jq -r '.data' | base64 -d > saida.ods
 {
@@ -170,7 +251,7 @@ EOF
 **Converter .xlsx → .ods**
 
 ```bash
-curl -X POST http://localhost:8080/api/convert/xlsx-to-ods \
+curl -X POST http://localhost:8080/api/v1/convert/xlsx-to-ods \
   -H "Content-Type: application/json" \
   -d "{\"file\":\"$(base64 -w0 dados.xlsx)\",\"filename\":\"dados.xlsx\"}" \
   | jq -r '.data' | base64 -d > dados.ods
@@ -179,7 +260,7 @@ curl -X POST http://localhost:8080/api/convert/xlsx-to-ods \
 **Ver a resposta completa (útil para debug)**
 
 ```bash
-curl -X POST http://localhost:8080/api/convert/ods-to-xlsx \
+curl -X POST http://localhost:8080/api/v1/convert/ods-to-xlsx \
   -H "Content-Type: application/json" \
   -d "{\"file\":\"$(base64 -w0 tabela.ods)\",\"filename\":\"tabela.ods\"}" | jq .
 ```
@@ -187,7 +268,7 @@ curl -X POST http://localhost:8080/api/convert/ods-to-xlsx \
 **Com host/porta customizada**
 
 ```bash
-curl -X POST http://127.0.0.1:9000/api/convert/xlsb-to-xlsx \
+curl -X POST http://127.0.0.1:9000/api/v1/convert/xlsb-to-xlsx \
   -H "Content-Type: application/json" \
   -d "{\"file\":\"$(base64 -w0 input.xlsb)\",\"filename\":\"input.xlsb\"}" \
   | jq -r '.data' | base64 -d > output.xlsx
@@ -196,7 +277,7 @@ curl -X POST http://127.0.0.1:9000/api/convert/xlsb-to-xlsx \
 #### Usando uma porta diferente
 
 ```bash
-curl -F "file=@planilha.xlsb" http://localhost:9000/api/convert -o out.xlsx
+curl -F "file=@planilha.xlsb" http://localhost:9000/api/v1/convert -o out.xlsx
 ```
 
 #### Health check
@@ -208,6 +289,175 @@ curl -sI http://localhost:8080/healthz
 ```
 
 > **Dica**: Instale o `jq` (`sudo apt install jq` ou `brew install jq`). Ele facilita muito o uso da API JSON.
+
+### Exemplos com Axios (JavaScript/Node.js)
+
+Instale: `npm install axios form-data`
+
+#### Upload multipart — baixar o arquivo convertido
+
+```js
+import axios from 'axios';
+import FormData from 'form-data';
+import fs from 'fs';
+
+const form = new FormData();
+form.append('file', fs.createReadStream('planilha.xlsb'), 'planilha.xlsb');
+
+const response = await axios.post(
+  'http://localhost:8080/api/v1/convert/xlsb-to-xlsx',
+  form,
+  { headers: form.getHeaders(), responseType: 'arraybuffer' }
+);
+
+fs.writeFileSync('planilha.xlsx', response.data);
+```
+
+#### Upload multipart — obter envelope JSON (`?format=json`)
+
+```js
+const response = await axios.post(
+  'http://localhost:8080/api/v1/convert/xlsb-to-xlsx?format=json',
+  form,
+  { headers: form.getHeaders() }
+);
+
+const convertido = Buffer.from(response.data.data, 'base64');
+fs.writeFileSync('planilha.xlsx', convertido);
+```
+
+#### API JSON pura (base64)
+
+```js
+const fileBuffer = fs.readFileSync('planilha.xlsb');
+
+const response = await axios.post(
+  'http://localhost:8080/api/v1/convert/xlsb-to-xlsx',
+  {
+    file: fileBuffer.toString('base64'),
+    filename: 'planilha.xlsb',
+  },
+  { headers: { 'Content-Type': 'application/json' } }
+);
+
+const convertido = Buffer.from(response.data.data, 'base64');
+fs.writeFileSync('planilha.xlsx', convertido);
+```
+
+#### Endpoint inteligente (detecta o formato automaticamente)
+
+```js
+const form = new FormData();
+form.append('file', fs.createReadStream('dados.xlsx'), 'dados.xlsx');
+
+const response = await axios.post(
+  'http://localhost:8080/api/v1/convert',
+  form,
+  { headers: form.getHeaders(), responseType: 'arraybuffer' }
+);
+
+fs.writeFileSync('dados.ods', response.data);
+```
+
+---
+
+### Postman
+
+#### Importar a collection
+
+1. Abra o Postman → **Import** → cole o JSON abaixo ou salve como `office-converter.postman_collection.json`.
+
+```json
+{
+  "info": {
+    "name": "office-converter",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" }
+  ],
+  "item": [
+    {
+      "name": "Converter XLSB → XLSX (multipart)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert/xlsb-to-xlsx",
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "file", "type": "file", "src": "/caminho/para/planilha.xlsb" }]
+        }
+      }
+    },
+    {
+      "name": "Converter XLSX → ODS (multipart)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert/xlsx-to-ods",
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "file", "type": "file", "src": "/caminho/para/dados.xlsx" }]
+        }
+      }
+    },
+    {
+      "name": "Converter ODS → XLSX (multipart)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert/ods-to-xlsx",
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "file", "type": "file", "src": "/caminho/para/tabela.ods" }]
+        }
+      }
+    },
+    {
+      "name": "Endpoint inteligente (multipart)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert",
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "file", "type": "file", "src": "/caminho/para/arquivo.xlsb" }]
+        }
+      }
+    },
+    {
+      "name": "Converter XLSB → XLSX (JSON/base64)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert/xlsb-to-xlsx",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file\": \"<conteúdo em base64>\",\n  \"filename\": \"planilha.xlsb\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/healthz"
+      }
+    }
+  ]
+}
+```
+
+#### Configuração manual (sem importar)
+
+1. Defina a variável **base URL**: `http://localhost:8080`
+2. Crie uma requisição **POST** para `{{base_url}}/api/v1/convert/xlsb-to-xlsx`
+3. Aba **Body** → selecione **form-data**
+4. Adicione a chave `file`, mude o tipo para **File** e selecione o arquivo `.xlsb`
+5. Clique em **Send** — o corpo da resposta é o arquivo `.xlsx` convertido (use **Save to a file** no painel de resposta)
+
+Para JSON/base64:
+1. Aba **Body** → selecione **raw** → tipo **JSON**
+2. Cole: `{ "file": "<base64>", "filename": "planilha.xlsb" }`
+3. A resposta JSON contém o arquivo convertido no campo `data` (base64)
+
+---
 
 ### Formatos de requisição e resposta da API JSON pura (base64)
 

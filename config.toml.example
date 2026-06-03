@@ -11,3 +11,6 @@ graceful_timeout = "15s"  # how long to wait for in-flight requests on shutdown
 enabled   = false         # env: OFFICE_TLS_ENABLED  (true/false)
 # cert_file = "/etc/ssl/certs/server.crt"   # env: OFFICE_TLS_CERT
 # key_file  = "/etc/ssl/private/server.key" # env: OFFICE_TLS_KEY
+
+[swagger]
+enabled = false           # exposes /docs and /api/openapi.json (default: false)

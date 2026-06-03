@@ -1,3 +1,5 @@
+// This file contains the inline HTML templates served by the application.
+// Keeping them here avoids embedding a separate file tree for two small pages.
 package server
 
 const swaggerUIHTML = `<!DOCTYPE html>
@@ -13,7 +15,7 @@ const swaggerUIHTML = `<!DOCTYPE html>
 <script src="https://unpkg.com/swagger-ui-dist/swagger-ui-bundle.js"></script>
 <script>
 SwaggerUIBundle({
-  url: "/api/openapi.json",
+  url: "/api/v1/openapi.json",
   dom_id: "#swagger-ui",
   presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
   layout: "BaseLayout",
@@ -80,7 +82,7 @@ const indexHTML = `<!DOCTYPE html>
     <div class="hint">Formats: .xlsb, .xlsx, .ods — the UI uses the matching explicit endpoint</div>
     <button id="btn" disabled>Convert</button>
     <p id="status"></p>
-    <div class="api-note">Explicit endpoints: <code>/api/convert/xlsb-to-xlsx</code>, <code>/api/convert/xlsx-to-ods</code>, <code>/api/convert/ods-to-xlsx</code><br>JSON API: send <code>Content-Type: application/json</code> with <code>{"file": "base64..."}</code> or append <code>?format=json</code></div>
+    <div class="api-note">Explicit endpoints: <code>/api/v1/convert/xlsb-to-xlsx</code>, <code>/api/v1/convert/xlsx-to-ods</code>, <code>/api/v1/convert/ods-to-xlsx</code><br>JSON API: send <code>Content-Type: application/json</code> with <code>{"file": "base64..."}</code> or append <code>?format=json</code></div>
   </div>
 </main>
 <script>
@@ -95,10 +97,10 @@ function getTargetExt(name){
 }
 function getConvertEndpoint(name){
   var n=name.toLowerCase();
-  if(n.endsWith('.xlsb')) return '/api/convert/xlsb-to-xlsx';
-  if(n.endsWith('.xlsx')) return '/api/convert/xlsx-to-ods';
-  if(n.endsWith('.ods')) return '/api/convert/ods-to-xlsx';
-  return '/api/convert';
+  if(n.endsWith('.xlsb')) return '/api/v1/convert/xlsb-to-xlsx';
+  if(n.endsWith('.xlsx')) return '/api/v1/convert/xlsx-to-ods';
+  if(n.endsWith('.ods')) return '/api/v1/convert/ods-to-xlsx';
+  return '/api/v1/convert';
 }
 function pick(f){
   if(!f)return;

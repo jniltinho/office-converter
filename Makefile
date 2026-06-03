@@ -42,7 +42,7 @@ build-debug:
 #        make run ARGS="--port 9000"
 .PHONY: run
 run:
-	$(GO) run . serve
+	bin/office-converter serve
 
 # Generate code from OpenAPI spec (requires oapi-codegen: go install github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@latest)
 .PHONY: generate
@@ -119,24 +119,11 @@ build-linux-amd64:
 	@mkdir -p $(BIN_DIR)
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME)-linux-amd64 .
 
-.PHONY: build-linux-arm64
-build-linux-arm64:
-	@mkdir -p $(BIN_DIR)
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME)-linux-arm64 .
 
-.PHONY: build-darwin-amd64
-build-darwin-amd64:
-	@mkdir -p $(BIN_DIR)
-	CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME)-darwin-amd64 .
-
-.PHONY: build-windows-amd64
-build-windows-amd64:
-	@mkdir -p $(BIN_DIR)
-	CGO_ENABLED=0 GOOS=windows GOARCH=amd64 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BIN_DIR)/$(APP_NAME)-windows-amd64.exe .
 
 # Build for the most common platforms
 .PHONY: build-all
-build-all: build-linux-amd64 build-linux-arm64
+build-all: build-linux-amd64
 
 # --- Utilities ---
 
@@ -162,11 +149,10 @@ help:
 	@echo "  make docker-up          Build + run the Docker image"
 	@echo ""
 	@echo "  make build-linux-amd64  Cross-compile for Linux amd64"
-	@echo "  make build-linux-arm64  Cross-compile for Linux arm64"
 	@echo "  make build-all          Cross-compile for common platforms"
 	@echo "  make help               Show this message"
 
 # Prevent make from trying to create files with these names
 .PHONY: all build build-debug run generate fmt test clean generate-samples test-integration test-integration-docker test-all \
         docker-build docker-run docker-up \
-        build-linux-amd64 build-linux-arm64 build-darwin-amd64 build-windows-amd64 build-all help
+        build-linux-amd64 build-all help

@@ -6,6 +6,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Build metadata injected at link time via -ldflags (see Makefile).
+// Defaults are used when the binary is built without the production flags.
 var (
 	Version   = "dev"
 	BuildDate = "unknown"

@@ -1,3 +1,5 @@
+// This file contains the Echo HTTP handlers and supporting helpers.
+// Each handler follows the pattern: validate input → call [ConvertTo] → write response.
 package server
 
 import (
@@ -33,10 +35,13 @@ type convertResponse struct {
 	Data        string `json:"data"` // base64-encoded output file
 }
 
-// ErrorResponse is the standard error body returned by the JSON API.
+// ErrorResponse is the JSON body returned for all API error responses.
 type ErrorResponse struct {
 	Error string `json:"error"`
 }
+
+// convertRequest is the JSON body accepted by the conversion endpoints.
+// File must be a standard base64-encoded representation of the source file.
 
 func handleConvert(c *echo.Context) error {
 	if isJSONContentType(c) {
@@ -135,7 +140,7 @@ func performJSONConversion(c *echo.Context, toFormat, expectedExt, tempPrefix st
 		if expectedExt != "" {
 			origName = "input" + expectedExt
 		} else {
-			return jsonError(c, http.StatusBadRequest, "filename is required in JSON body for the smart /api/convert endpoint")
+			return jsonError(c, http.StatusBadRequest, "filename is required in JSON body for the smart /api/v1/convert endpoint")
 		}
 	}
 
@@ -156,7 +161,7 @@ func performJSONConversion(c *echo.Context, toFormat, expectedExt, tempPrefix st
 
 	if expectedExt != "" && !strings.EqualFold(origExt, expectedExt) {
 		return jsonError(c, http.StatusUnsupportedMediaType,
-			fmt.Sprintf("this route accepts only %s files (use the appropriate /api/convert/... endpoint)", expectedExt))
+			fmt.Sprintf("this route accepts only %s files (use the appropriate /api/v1/convert/... endpoint)", expectedExt))
 	}
 
 	workDir, err := os.MkdirTemp("", tempPrefix)
@@ -206,7 +211,7 @@ func handleConvertXlsbToXlsx(c *echo.Context) error {
 		return jsonError(c, http.StatusBadRequest, "missing 'file' form field")
 	}
 	if !strings.EqualFold(filepath.Ext(fileHeader.Filename), ".xlsb") {
-		return jsonError(c, http.StatusUnsupportedMediaType, "this route accepts only .xlsb files (use /api/convert/xlsb-to-xlsx)")
+		return jsonError(c, http.StatusUnsupportedMediaType, "this route accepts only .xlsb files (use /api/v1/convert/xlsb-to-xlsx)")
 	}
 	return performConversion(c, fileHeader, "xlsx", "xlsb-to-xlsx-req-")
 }
@@ -220,7 +225,7 @@ func handleConvertXlsxToOds(c *echo.Context) error {
 		return jsonError(c, http.StatusBadRequest, "missing 'file' form field")
 	}
 	if !strings.EqualFold(filepath.Ext(fileHeader.Filename), ".xlsx") {
-		return jsonError(c, http.StatusUnsupportedMediaType, "this route accepts only .xlsx files (use /api/convert/xlsx-to-ods)")
+		return jsonError(c, http.StatusUnsupportedMediaType, "this route accepts only .xlsx files (use /api/v1/convert/xlsx-to-ods)")
 	}
 	return performConversion(c, fileHeader, "ods", "xlsx-to-ods-req-")
 }
@@ -234,11 +239,12 @@ func handleConvertOdsToXlsx(c *echo.Context) error {
 		return jsonError(c, http.StatusBadRequest, "missing 'file' form field")
 	}
 	if !strings.EqualFold(filepath.Ext(fileHeader.Filename), ".ods") {
-		return jsonError(c, http.StatusUnsupportedMediaType, "this route accepts only .ods files (use /api/convert/ods-to-xlsx)")
+		return jsonError(c, http.StatusUnsupportedMediaType, "this route accepts only .ods files (use /api/v1/convert/ods-to-xlsx)")
 	}
 	return performConversion(c, fileHeader, "xlsx", "ods-to-xlsx-req-")
 }
 
+// saveUpload copies a multipart-uploaded file to dst on disk.
 func saveUpload(fh *multipart.FileHeader, dst string) error {
 	src, err := fh.Open()
 	if err != nil {
@@ -256,10 +262,13 @@ func saveUpload(fh *multipart.FileHeader, dst string) error {
 	return err
 }
 
+// jsonError writes a JSON [ErrorResponse] with the given HTTP status code.
 func jsonError(c *echo.Context, status int, msg string) error {
 	return c.JSON(status, ErrorResponse{Error: msg})
 }
 
+// contentTypeFor returns the MIME type for a given spreadsheet format extension
+// ("xlsx" or "ods"). Falls back to [mime.TypeByExtension] for unknown formats.
 func contentTypeFor(format string) string {
 	switch strings.ToLower(format) {
 	case "xlsx":
@@ -271,6 +280,8 @@ func contentTypeFor(format string) string {
 	}
 }
 
+// wantsJSONResponse reports whether the client prefers a JSON response,
+// either via the ?format=json query param or an Accept: application/json header.
 func wantsJSONResponse(c *echo.Context) bool {
 	if c.QueryParam("format") == "json" {
 		return true
@@ -278,6 +289,7 @@ func wantsJSONResponse(c *echo.Context) bool {
 	return strings.Contains(c.Request().Header.Get("Accept"), "application/json")
 }
 
+// isJSONContentType reports whether the request carries a JSON body.
 func isJSONContentType(c *echo.Context) bool {
 	return strings.HasPrefix(c.Request().Header.Get("Content-Type"), "application/json")
 }

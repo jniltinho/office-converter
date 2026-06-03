@@ -103,7 +103,7 @@ func Serve(cfg Config) error {
 		_ = c.String(code, msg)
 	}
 
-	registerRoutes(e)
+	registerRoutes(e, cfg)
 
 	ctx, cancel := signalContext()
 	defer cancel()
@@ -131,6 +131,8 @@ func Serve(cfg Config) error {
 	return nil
 }
 
+// signalContext returns a context that is cancelled when the process receives
+// SIGINT or SIGTERM, enabling graceful shutdown.
 func signalContext() (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 }
