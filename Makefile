@@ -94,6 +94,26 @@ clean:
 	rm -rf /tmp/convert-req-* /tmp/xlsb-to-xlsx-req-* /tmp/xlsx-to-ods-req-* /tmp/ods-to-xlsx-req-* /tmp/lo-profile-* 2>/dev/null || true
 	@echo "Cleanup complete."
 
+# --- TLS ---
+
+SSL_DIR  ?= certs
+SSL_CERT := $(SSL_DIR)/server.crt
+SSL_KEY  := $(SSL_DIR)/server.key
+
+# Generate a self-signed certificate valid for 3650 days (≈10 years).
+# Output: certs/server.crt and certs/server.key (override with SSL_DIR=<path>).
+.PHONY: gen-ssl
+gen-ssl:
+	@mkdir -p $(SSL_DIR)
+	openssl req -x509 -newkey rsa:4096 -sha256 -days 3650 -nodes \
+	  -keyout $(SSL_KEY) \
+	  -out    $(SSL_CERT) \
+	  -subj   "/CN=localhost" \
+	  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
+	@echo "Certificate : $(SSL_CERT)"
+	@echo "Private key : $(SSL_KEY)"
+	@echo "Run with TLS: ./$(BIN) serve --tls --tls-cert $(SSL_CERT) --tls-key $(SSL_KEY)"
+
 # --- Docker ---
 
 # Build the Docker image (same process as the Dockerfile)
@@ -151,9 +171,10 @@ help:
 	@echo ""
 	@echo "  make build-linux-amd64  Cross-compile for Linux amd64"
 	@echo "  make build-all          Cross-compile for common platforms"
+	@echo "  make gen-ssl            Generate self-signed TLS cert (3650 days) in certs/"
 	@echo "  make help               Show this message"
 
 # Prevent make from trying to create files with these names
 .PHONY: all build build-debug run generate fmt test clean generate-samples test-integration test-integration-docker test-all \
         docker-build docker-run docker-up \
-        build-linux-amd64 build-all help
+        build-linux-amd64 build-all gen-ssl help
