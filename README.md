@@ -55,28 +55,35 @@ The image uses a two-stage build: a `golang:1.26-bookworm` builder produces a st
 ### Binary
 
 ```bash
-./office-converter
+./office-converter serve
 ```
 
-**Flags:**
+**Flags (`serve` sub-command):**
 
-| Flag     | Description                          | Default          |
-|----------|--------------------------------------|------------------|
-| `--port` | TCP port to listen on                | `8080`           |
-| `--host` | Host/interface to bind to            | (all interfaces) |
+| Flag          | Description                                             | Default          | Env var                  |
+|---------------|---------------------------------------------------------|------------------|--------------------------|
+| `--port`      | TCP port to listen on                                   | `8080`           | `OFFICE_PORT`            |
+| `--host`      | Host/interface to bind to                               | (all interfaces) | `OFFICE_HOST`            |
+| `--tls`       | Enable HTTPS                                            | `false`          | `OFFICE_TLS_ENABLED`     |
+| `--tls-cert`  | Path to TLS certificate file                            | —                | `OFFICE_TLS_CERT`        |
+| `--tls-key`   | Path to TLS private key file                            | —                | `OFFICE_TLS_KEY`         |
+| `--swagger`   | Enable `/docs` and `/api/v1/openapi.json`               | `false`          | `OFFICE_SWAGGER_ENABLED` |
+| `--config`    | Path to `config.toml` (auto-detected in cwd if absent) | —                | `OFFICE_CONFIG`          |
 
 Examples:
 
 ```bash
-./office-converter --port 9000
-./office-converter --host 127.0.0.1 --port 8080
+./office-converter serve --port 9000
+./office-converter serve --host 127.0.0.1 --port 8080
+./office-converter serve --tls --tls-cert /certs/server.crt --tls-key /certs/server.key
+./office-converter serve --swagger
+./office-converter serve --config /etc/office-converter/config.toml
 ```
 
 ### Using Make
 
 ```bash
-make run                    # runs with `go run`
-make run ARGS="--port 9000"
+make run                    # runs `bin/office-converter serve`
 ```
 
 ### Docker
