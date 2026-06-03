@@ -4,20 +4,11 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strconv"
 
 	"office-converter/internal/server"
 
 	"github.com/spf13/cobra"
-)
-
-var (
-	host           string
-	port           int
-	tlsEnabled     bool
-	tlsCert        string
-	tlsKey         string
-	swaggerEnabled bool
+	"github.com/spf13/viper"
 )
 
 var serveCmd = &cobra.Command{
@@ -25,91 +16,72 @@ var serveCmd = &cobra.Command{
 	Short:        "Start the HTTP server",
 	SilenceUsage: true,
 	RunE: func(cmd *cobra.Command, _ []string) error {
-		// Config path: --config > OFFICE_CONFIG env > auto-detect config.toml
+		v := viper.New()
+
+		// Defaults — mirror what the config file would set when absent.
+		v.SetDefault("server.host", "")
+		v.SetDefault("server.port", 8080)
+		v.SetDefault("server.graceful_timeout", "15s")
+		v.SetDefault("tls.enabled", false)
+		v.SetDefault("tls.cert_file", "")
+		v.SetDefault("tls.key_file", "")
+		v.SetDefault("swagger.enabled", false)
+
+		// Config file: --config flag > OFFICE_CONFIG env > auto-detect config.toml.
 		configPath := cfgFile
 		if configPath == "" {
 			configPath = os.Getenv("OFFICE_CONFIG")
 		}
-
-		cfg, err := server.LoadConfig(configPath)
-		if err != nil {
-			return err
+		if configPath != "" {
+			v.SetConfigFile(configPath)
+			if err := v.ReadInConfig(); err != nil {
+				return fmt.Errorf("loading config %s: %w", configPath, err)
+			}
+		} else {
+			v.SetConfigName("config")
+			v.SetConfigType("toml")
+			v.AddConfigPath(".")
+			if err := v.ReadInConfig(); err != nil {
+				if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+					return fmt.Errorf("loading config: %w", err)
+				}
+				// No config.toml found — proceed with defaults and env/flags.
+			}
 		}
 
-		// Env vars override config file (skipped when the corresponding CLI flag was set).
-		if err := applyEnv(cmd, &cfg); err != nil {
-			return err
-		}
+		// Environment variable bindings (explicit to preserve existing names).
+		v.BindEnv("server.host", "OFFICE_HOST")             //nolint:errcheck
+		v.BindEnv("server.port", "OFFICE_PORT")             //nolint:errcheck
+		v.BindEnv("tls.enabled", "OFFICE_TLS_ENABLED")      //nolint:errcheck
+		v.BindEnv("tls.cert_file", "OFFICE_TLS_CERT")       //nolint:errcheck
+		v.BindEnv("tls.key_file", "OFFICE_TLS_KEY")         //nolint:errcheck
+		v.BindEnv("swagger.enabled", "OFFICE_SWAGGER_ENABLED") //nolint:errcheck
 
-		// CLI flags have the highest priority.
-		if cmd.Flags().Changed("host") {
-			cfg.Server.Host = host
-		}
-		if cmd.Flags().Changed("port") {
-			cfg.Server.Port = port
-		}
-		if cmd.Flags().Changed("tls") {
-			cfg.TLS.Enabled = tlsEnabled
-		}
-		if cmd.Flags().Changed("tls-cert") {
-			cfg.TLS.CertFile = tlsCert
-		}
-		if cmd.Flags().Changed("tls-key") {
-			cfg.TLS.KeyFile = tlsKey
-		}
-		if cmd.Flags().Changed("swagger") {
-			cfg.Swagger.Enabled = swaggerEnabled
+		// CLI flag bindings — highest priority, applied only when the flag was set.
+		v.BindPFlag("server.host", cmd.Flags().Lookup("host"))       //nolint:errcheck
+		v.BindPFlag("server.port", cmd.Flags().Lookup("port"))       //nolint:errcheck
+		v.BindPFlag("tls.enabled", cmd.Flags().Lookup("tls"))        //nolint:errcheck
+		v.BindPFlag("tls.cert_file", cmd.Flags().Lookup("tls-cert")) //nolint:errcheck
+		v.BindPFlag("tls.key_file", cmd.Flags().Lookup("tls-key"))   //nolint:errcheck
+		v.BindPFlag("swagger.enabled", cmd.Flags().Lookup("swagger")) //nolint:errcheck
+
+		var cfg server.Config
+		if err := v.Unmarshal(&cfg); err != nil {
+			return fmt.Errorf("invalid configuration: %w", err)
 		}
 
 		return server.Serve(cfg)
 	},
 }
 
-// applyEnv merges OFFICE_* environment variables into cfg.
-// Each variable is skipped when the corresponding CLI flag was explicitly set,
-// so the precedence order is: flag > env > config file > default.
-func applyEnv(cmd *cobra.Command, cfg *server.Config) error {
-	if v := os.Getenv("OFFICE_HOST"); v != "" && !cmd.Flags().Changed("host") {
-		cfg.Server.Host = v
-	}
-	if v := os.Getenv("OFFICE_PORT"); v != "" && !cmd.Flags().Changed("port") {
-		n, err := strconv.Atoi(v)
-		if err != nil {
-			return fmt.Errorf("invalid OFFICE_PORT %q: %w", v, err)
-		}
-		cfg.Server.Port = n
-	}
-	if v := os.Getenv("OFFICE_TLS_ENABLED"); v != "" && !cmd.Flags().Changed("tls") {
-		b, err := strconv.ParseBool(v)
-		if err != nil {
-			return fmt.Errorf("invalid OFFICE_TLS_ENABLED %q: %w", v, err)
-		}
-		cfg.TLS.Enabled = b
-	}
-	if v := os.Getenv("OFFICE_TLS_CERT"); v != "" && !cmd.Flags().Changed("tls-cert") {
-		cfg.TLS.CertFile = v
-	}
-	if v := os.Getenv("OFFICE_TLS_KEY"); v != "" && !cmd.Flags().Changed("tls-key") {
-		cfg.TLS.KeyFile = v
-	}
-	if v := os.Getenv("OFFICE_SWAGGER_ENABLED"); v != "" && !cmd.Flags().Changed("swagger") {
-		b, err := strconv.ParseBool(v)
-		if err != nil {
-			return fmt.Errorf("invalid OFFICE_SWAGGER_ENABLED %q: %w", v, err)
-		}
-		cfg.Swagger.Enabled = b
-	}
-	return nil
-}
-
 func init() {
 	rootCmd.AddCommand(serveCmd)
 
 	f := serveCmd.Flags()
-	f.StringVar(&host, "host", "", "bind address (env: OFFICE_HOST)")
-	f.IntVar(&port, "port", 8080, "HTTP port (env: OFFICE_PORT)")
-	f.BoolVar(&tlsEnabled, "tls", false, "enable TLS/HTTPS (env: OFFICE_TLS_ENABLED)")
-	f.StringVar(&tlsCert, "tls-cert", "", "TLS certificate file (env: OFFICE_TLS_CERT)")
-	f.StringVar(&tlsKey, "tls-key", "", "TLS private key file (env: OFFICE_TLS_KEY)")
-	f.BoolVar(&swaggerEnabled, "swagger", false, "enable /docs and /api/v1/openapi.json (env: OFFICE_SWAGGER_ENABLED)")
+	f.String("host", "", "bind address (env: OFFICE_HOST)")
+	f.Int("port", 8080, "HTTP port (env: OFFICE_PORT)")
+	f.Bool("tls", false, "enable TLS/HTTPS (env: OFFICE_TLS_ENABLED)")
+	f.String("tls-cert", "", "TLS certificate file (env: OFFICE_TLS_CERT)")
+	f.String("tls-key", "", "TLS private key file (env: OFFICE_TLS_KEY)")
+	f.Bool("swagger", false, "enable /docs and /api/v1/openapi.json (env: OFFICE_SWAGGER_ENABLED)")
 }

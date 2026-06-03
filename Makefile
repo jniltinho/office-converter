@@ -30,6 +30,7 @@ all: build
 build:
 	@mkdir -p $(BIN_DIR)
 	CGO_ENABLED=0 $(GO) build $(GOFLAGS) $(LDFLAGS) -o $(BIN) .
+	upx --best $(BIN)
 
 # Build with debug symbols (useful for investigation)
 .PHONY: build-debug

@@ -110,7 +110,7 @@ func Serve(cfg Config) error {
 
 	sc := echo.StartConfig{
 		Address:         address,
-		GracefulTimeout: cfg.Server.GracefulTimeout.Duration,
+		GracefulTimeout: cfg.Server.GracefulTimeout,
 	}
 
 	if cfg.TLS.Enabled {

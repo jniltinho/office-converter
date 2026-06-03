@@ -37,7 +37,7 @@ const indexHTML = `<!DOCTYPE html>
     font-family: ui-monospace, "Cascadia Code", monospace;
     background: #f5f5f5; color: #171717;
     min-height: 100vh; margin: 0;
-    display: flex; align-items: center; justify-content: center; padding: 24px;
+    display: flex; align-items: flex-start; justify-content: center; padding-top: 10vh; padding-left: 24px; padding-right: 24px;
   }
   main { width: 100%; max-width: 560px; border: 2px solid #171717; background: #fff; }
   header { border-bottom: 2px solid #171717; background: #171717; padding: 16px 24px; }
