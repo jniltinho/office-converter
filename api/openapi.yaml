@@ -1,0 +1,297 @@
+openapi: "3.0.3"
+info:
+  title: Office Converter API
+  description: |
+    HTTP API for converting spreadsheet files between XLSB, XLSX, and ODS formats.
+    Uses LibreOffice in headless mode for conversions.
+
+    **Input formats:** `.xlsb`, `.xlsx`, `.ods`
+
+    **Supported conversions:**
+    - XLSB → XLSX
+    - XLSX → ODS
+    - ODS  → XLSX
+
+    **Request modes:**
+    - `multipart/form-data` — binary file upload, returns the converted file as a download
+    - `application/json` — base64-encoded input, always returns JSON
+    - Add `?format=json` or `Accept: application/json` to force a JSON envelope on multipart requests
+  version: "1.0.0"
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: convert
+    description: Spreadsheet conversion
+  - name: health
+    description: Health check
+
+paths:
+  /api/convert:
+    post:
+      summary: Smart convert (auto-detect format)
+      description: |
+        Detects input format from the filename extension and converts automatically:
+        - `.xlsb` / `.ods` → `.xlsx`
+        - `.xlsx` → `.ods`
+      operationId: convertSmart
+      tags: [convert]
+      parameters:
+        - $ref: '#/components/parameters/FormatParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConvertRequest'
+      responses:
+        '200':
+          description: Converted file (binary download or JSON envelope)
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+            application/vnd.oasis.opendocument.spreadsheet:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConvertResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/convert/xlsb-to-xlsx:
+    post:
+      summary: Convert XLSB → XLSX
+      operationId: convertXlsbToXlsx
+      tags: [convert]
+      parameters:
+        - $ref: '#/components/parameters/FormatParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConvertRequest'
+      responses:
+        '200':
+          description: Converted XLSX file
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConvertResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/convert/xlsx-to-ods:
+    post:
+      summary: Convert XLSX → ODS
+      operationId: convertXlsxToOds
+      tags: [convert]
+      parameters:
+        - $ref: '#/components/parameters/FormatParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConvertRequest'
+      responses:
+        '200':
+          description: Converted ODS file
+          content:
+            application/vnd.oasis.opendocument.spreadsheet:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConvertResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /api/convert/ods-to-xlsx:
+    post:
+      summary: Convert ODS → XLSX
+      operationId: convertOdsToXlsx
+      tags: [convert]
+      parameters:
+        - $ref: '#/components/parameters/FormatParam'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConvertRequest'
+      responses:
+        '200':
+          description: Converted XLSX file
+          content:
+            application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+              schema:
+                type: string
+                format: binary
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ConvertResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /healthz:
+    get:
+      summary: Health check
+      operationId: healthz
+      tags: [health]
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: ok
+    head:
+      summary: Health check (HEAD — no body)
+      operationId: healthzHead
+      tags: [health]
+      responses:
+        '200':
+          description: Server is healthy
+
+components:
+  parameters:
+    FormatParam:
+      name: format
+      in: query
+      required: false
+      description: Force a JSON response envelope even for multipart uploads
+      schema:
+        type: string
+        enum: [json]
+
+  schemas:
+    UploadRequest:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Spreadsheet file to convert
+
+    ConvertRequest:
+      type: object
+      required: [file]
+      properties:
+        file:
+          type: string
+          format: byte
+          description: Base64-encoded spreadsheet file content
+        filename:
+          type: string
+          description: |
+            Original filename with extension. Required when using the smart
+            `/api/convert` endpoint so the server can infer the source format.
+          example: report.xlsb
+
+    ConvertResponse:
+      type: object
+      required: [success, filename, content_type, size, data]
+      properties:
+        success:
+          type: boolean
+          example: true
+        filename:
+          type: string
+          example: report.xlsx
+        content_type:
+          type: string
+          example: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+        size:
+          type: integer
+          format: int64
+          example: 20480
+        data:
+          type: string
+          format: byte
+          description: Base64-encoded converted file content
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          example: "missing 'file' form field"
+
+  responses:
+    BadRequest:
+      description: Bad request — missing or invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnsupportedMediaType:
+      description: Unsupported file format
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    UnprocessableEntity:
+      description: LibreOffice conversion failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'

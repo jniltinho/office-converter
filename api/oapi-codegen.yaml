@@ -1,0 +1,8 @@
+# oapi-codegen v2 configuration
+# Run: make generate
+package: api
+output: internal/api/api.gen.go
+generate:
+  models: true
+  client: true
+  embedded-spec: true

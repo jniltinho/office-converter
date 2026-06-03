@@ -1,0 +1,13 @@
+# office-converter configuration
+# Copy this file to config.toml and adjust as needed.
+# Precedence (highest to lowest): CLI flag > environment variable > config file > default
+
+[server]
+# host = ""               # interface to bind (empty = all interfaces, e.g. "127.0.0.1")
+port             = 8080   # env: OFFICE_PORT
+graceful_timeout = "15s"  # how long to wait for in-flight requests on shutdown
+
+[tls]
+enabled   = false         # env: OFFICE_TLS_ENABLED  (true/false)
+# cert_file = "/etc/ssl/certs/server.crt"   # env: OFFICE_TLS_CERT
+# key_file  = "/etc/ssl/private/server.key" # env: OFFICE_TLS_KEY
