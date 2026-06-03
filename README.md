@@ -186,6 +186,8 @@ Browse to `http://localhost:8080`.
 - Supported formats: `.xlsb`, `.xlsx`, `.ods`
 - The interface automatically chooses the correct conversion endpoint.
 
+![Web Interface](DOCUMENTS/screenshot/screenshot_home.png)
+
 ## API Reference
 
 ### Endpoints
