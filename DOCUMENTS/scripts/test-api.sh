@@ -198,49 +198,49 @@ info "Multipart direct download (typed endpoints)"
 # xlsx -> ods
 status=$(http_status_to_file "$WORK_DIR/out.ods" \
   -F "file=@$TESTDATA_DIR/sample.xlsx" \
-  "$SERVER_URL/api/convert/xlsx-to-ods")
-assert_status 200 "$status" "POST /api/convert/xlsx-to-ods (multipart)"
+  "$SERVER_URL/api/v1/convert/xlsx-to-ods")
+assert_status 200 "$status" "POST /api/v1/convert/xlsx-to-ods (multipart)"
 assert_file_exists_nonempty "$WORK_DIR/out.ods" "xlsx->ods direct download"
 assert_extension "$(basename "$WORK_DIR/out.ods")" ".ods" "xlsx->ods output name"
 
 # ods -> xlsx
 status=$(http_status_to_file "$WORK_DIR/out.xlsx" \
   -F "file=@$TESTDATA_DIR/sample.ods" \
-  "$SERVER_URL/api/convert/ods-to-xlsx")
-assert_status 200 "$status" "POST /api/convert/ods-to-xlsx (multipart)"
+  "$SERVER_URL/api/v1/convert/ods-to-xlsx")
+assert_status 200 "$status" "POST /api/v1/convert/ods-to-xlsx (multipart)"
 assert_file_exists_nonempty "$WORK_DIR/out.xlsx" "ods->xlsx direct download"
 
 # xlsb -> xlsx (if available)
 if [[ $HAVE_XLSB -eq 1 ]]; then
   status=$(http_status_to_file "$WORK_DIR/out-from-xlsb.xlsx" \
     -F "file=@$XLSB_FILE" \
-    "$SERVER_URL/api/convert/xlsb-to-xlsx")
-  assert_status 200 "$status" "POST /api/convert/xlsb-to-xlsx (multipart)"
+    "$SERVER_URL/api/v1/convert/xlsb-to-xlsx")
+  assert_status 200 "$status" "POST /api/v1/convert/xlsb-to-xlsx (multipart)"
   assert_file_exists_nonempty "$WORK_DIR/out-from-xlsb.xlsx" "xlsb->xlsx direct download"
 else
-  skip "POST /api/convert/xlsb-to-xlsx (no sample.xlsb)"
+  skip "POST /api/v1/convert/xlsb-to-xlsx (no sample.xlsb)"
 fi
 
 # --- 3. Smart endpoint (auto detect) - multipart -----------------------------
 
-info "Smart endpoint /api/convert (multipart)"
+info "Smart endpoint /api/v1/convert (multipart)"
 
 status=$(http_status_to_file "$WORK_DIR/smart1.ods" \
   -F "file=@$TESTDATA_DIR/sample.xlsx" \
-  "$SERVER_URL/api/convert")
+  "$SERVER_URL/api/v1/convert")
 assert_status 200 "$status" "smart: xlsx -> .ods"
 assert_extension "$(basename "$WORK_DIR/smart1.ods")" ".ods" "smart xlsx output"
 
 status=$(http_status_to_file "$WORK_DIR/smart2.xlsx" \
   -F "file=@$TESTDATA_DIR/sample.ods" \
-  "$SERVER_URL/api/convert")
+  "$SERVER_URL/api/v1/convert")
 assert_status 200 "$status" "smart: ods -> .xlsx"
 assert_extension "$(basename "$WORK_DIR/smart2.xlsx")" ".xlsx" "smart ods output"
 
 if [[ $HAVE_XLSB -eq 1 ]]; then
   status=$(http_status_to_file "$WORK_DIR/smart3.xlsx" \
     -F "file=@$XLSB_FILE" \
-    "$SERVER_URL/api/convert")
+    "$SERVER_URL/api/v1/convert")
   assert_status 200 "$status" "smart: xlsb -> .xlsx"
   assert_extension "$(basename "$WORK_DIR/smart3.xlsx")" ".xlsx" "smart xlsb output"
 else
@@ -253,7 +253,7 @@ info "Multipart + ?format=json"
 
 status=$(http_status_to_file "$WORK_DIR/json1.json" \
   -F "file=@$TESTDATA_DIR/sample.xlsx" \
-  "$SERVER_URL/api/convert/xlsx-to-ods?format=json")
+  "$SERVER_URL/api/v1/convert/xlsx-to-ods?format=json")
 assert_status 200 "$status" "xlsx->ods ?format=json"
 if json_success "$WORK_DIR/json1.json"; then
   pass "xlsx->ods json success=true"
@@ -291,7 +291,7 @@ body=$(make_json_body "$TESTDATA_DIR/sample.xlsx")
 status=$(printf '%s' "$body" | http_status_to_file "$WORK_DIR/j2.json" \
   -X POST -H "Content-Type: application/json" \
   -d @- \
-  "$SERVER_URL/api/convert/xlsx-to-ods")
+  "$SERVER_URL/api/v1/convert/xlsx-to-ods")
 assert_status 200 "$status" "JSON xlsx->ods"
 if json_success "$WORK_DIR/j2.json"; then
   pass "JSON xlsx->ods success"
@@ -304,7 +304,7 @@ body=$(make_json_body "$TESTDATA_DIR/sample.ods")
 status=$(printf '%s' "$body" | http_status_to_file "$WORK_DIR/j3.json" \
   -X POST -H "Content-Type: application/json" \
   -d @- \
-  "$SERVER_URL/api/convert/ods-to-xlsx")
+  "$SERVER_URL/api/v1/convert/ods-to-xlsx")
 assert_status 200 "$status" "JSON ods->xlsx"
 
 # smart via json (filename drives detection)
@@ -312,7 +312,7 @@ body=$(make_json_body "$TESTDATA_DIR/sample.xlsx")
 status=$(printf '%s' "$body" | http_status_to_file "$WORK_DIR/j4.json" \
   -X POST -H "Content-Type: application/json" \
   -d @- \
-  "$SERVER_URL/api/convert")
+  "$SERVER_URL/api/v1/convert")
 assert_status 200 "$status" "JSON smart xlsx->ods"
 
 if [[ $HAVE_XLSB -eq 1 ]]; then
@@ -320,7 +320,7 @@ if [[ $HAVE_XLSB -eq 1 ]]; then
   status=$(printf '%s' "$body" | http_status_to_file "$WORK_DIR/j5.json" \
     -X POST -H "Content-Type: application/json" \
     -d @- \
-    "$SERVER_URL/api/convert/xlsb-to-xlsx")
+    "$SERVER_URL/api/v1/convert/xlsb-to-xlsx")
   assert_status 200 "$status" "JSON xlsb->xlsx"
 else
   skip "JSON xlsb (no sample.xlsb)"
@@ -333,32 +333,32 @@ info "Error handling"
 # Wrong type on explicit route
 status=$(http_status_to_file "$WORK_DIR/err1.json" \
   -F "file=@$TESTDATA_DIR/sample.xlsx" \
-  "$SERVER_URL/api/convert/xlsb-to-xlsx")
+  "$SERVER_URL/api/v1/convert/xlsb-to-xlsx")
 assert_status 415 "$status" "xlsx sent to /xlsb-to-xlsx -> 415"
 
 # Missing file field
 status=$(http_status_to_file "$WORK_DIR/err2.json" \
   -F "notfile=@$TESTDATA_DIR/sample.xlsx" \
-  "$SERVER_URL/api/convert")
+  "$SERVER_URL/api/v1/convert")
 assert_status 400 "$status" "missing 'file' field -> 400"
 
 # Invalid base64 in JSON
 status=$(printf '{"file":"!!!notbase64!!!","filename":"x.xlsx"}' | http_status_to_file "$WORK_DIR/err3.json" \
   -X POST -H "Content-Type: application/json" -d @- \
-  "$SERVER_URL/api/convert/xlsx-to-ods")
+  "$SERVER_URL/api/v1/convert/xlsx-to-ods")
 assert_status 400 "$status" "invalid base64 -> 400"
 
 # Unsupported format on smart
 echo "hello" > "$WORK_DIR/notsheet.txt"
 status=$(http_status_to_file "$WORK_DIR/err4.json" \
   -F "file=@$WORK_DIR/notsheet.txt" \
-  "$SERVER_URL/api/convert")
+  "$SERVER_URL/api/v1/convert")
 assert_status 415 "$status" "unsupported extension on smart -> 415"
 
 # JSON missing filename on smart
 status=$(printf '{"file":"%s"}' "$(base64 -w0 < "$TESTDATA_DIR/sample.xlsx")" | http_status_to_file "$WORK_DIR/err5.json" \
   -X POST -H "Content-Type: application/json" -d @- \
-  "$SERVER_URL/api/convert")
+  "$SERVER_URL/api/v1/convert")
 assert_status 400 "$status" "smart json without filename -> 400"
 
 # --- 7. Content-Type on JSON responses ---------------------------------------
@@ -367,7 +367,7 @@ info "Content-Type verification (JSON responses)"
 
 curl -sS -D "$WORK_DIR/hdr.txt" -o /dev/null -H "Accept: application/json" \
   -F "file=@$TESTDATA_DIR/sample.xlsx" \
-  "$SERVER_URL/api/convert/xlsx-to-ods?format=json" 2>/dev/null || true
+  "$SERVER_URL/api/v1/convert/xlsx-to-ods?format=json" 2>/dev/null || true
 ct=$(awk -F': ' 'tolower($1) ~ /content-type/ {print tolower($2)}' "$WORK_DIR/hdr.txt" | tr -d '\r' | head -1)
 TOTAL=$((TOTAL + 1))
 if [[ "$ct" == *application/json* ]]; then
