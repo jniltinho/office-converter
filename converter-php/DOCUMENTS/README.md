@@ -97,6 +97,28 @@ docker run --rm -p 9000:9000 -e OFFICE_PORT=9000 office-converter
 PORT=9000 make docker-run
 ```
 
+### Using an env file
+
+Copy the template and edit the values:
+
+```bash
+cp env.example .env
+# edit .env as needed
+```
+
+Then pass it to `docker run`:
+
+```bash
+docker run --rm -p 8080:8080 --env-file .env office-converter:latest
+```
+
+If the port is defined in the file, map it consistently:
+
+```bash
+# .env contains OFFICE_PORT=9000
+docker run --rm -p 9000:9000 --env-file .env office-converter:latest
+```
+
 ### Docker Compose
 
 ```yaml

@@ -26,6 +26,13 @@ docker build -t office-converter .
 docker run --rm -p 8080:8080 office-converter
 ```
 
+To pass configuration via an env file:
+
+```bash
+cp env.example .env   # edit as needed
+docker run --rm -p 8080:8080 --env-file .env office-converter
+```
+
 The container starts FrankenPHP in worker mode (Slim app):
 
 ```bash
