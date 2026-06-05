@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Test artifacts
+test-server.log
+testdata/
+
+# env / local config
+.env
+config.toml
+
+# Editor/IDE
+# .idea/
+# .vscode/
+
+# OS
+.DS_Store
+Thumbs.db
