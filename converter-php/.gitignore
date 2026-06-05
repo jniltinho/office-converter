@@ -1,0 +1,21 @@
+# Build / binary output (kept for compatibility)
+bin/
+
+# Test artifacts
+test-server.log
+testdata
+
+# Dependency / build dirs
+vendor/
+
+# env / local config
+.env
+config.toml
+
+# Editor/IDE
+# .idea/
+# .vscode/
+
+# OS
+.DS_Store
+Thumbs.db

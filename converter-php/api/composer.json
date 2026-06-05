@@ -1,0 +1,21 @@
+{
+    "name": "office-converter/slim-api",
+    "description": "Office Converter API implemented with Slim Framework v4",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.1",
+        "slim/slim": "^4.12",
+        "slim/psr7": "^1.6",
+        "nyholm/psr7-server": "^1.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": "dist"
+    }
+}

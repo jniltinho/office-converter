@@ -1,0 +1,98 @@
+{
+  "info": {
+    "name": "office-converter",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8080" }
+  ],
+  "item": [
+    {
+      "name": "Convert XLSB → XLSX (multipart)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert/xlsb-to-xlsx",
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "file", "type": "file", "src": "/path/to/planilha.xlsb" }]
+        }
+      }
+    },
+    {
+      "name": "Convert XLSX → ODS (multipart)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert/xlsx-to-ods",
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "file", "type": "file", "src": "/path/to/dados.xlsx" }]
+        }
+      }
+    },
+    {
+      "name": "Convert ODS → XLSX (multipart)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert/ods-to-xlsx",
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "file", "type": "file", "src": "/path/to/tabela.ods" }]
+        }
+      }
+    },
+    {
+      "name": "Smart convert (multipart)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert",
+        "body": {
+          "mode": "formdata",
+          "formdata": [{ "key": "file", "type": "file", "src": "/path/to/arquivo.xlsb" }]
+        }
+      }
+    },
+    {
+      "name": "Convert XLSB → XLSX (JSON/base64)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert/xlsb-to-xlsx",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file\": \"<base64-encoded content>\",\n  \"filename\": \"planilha.xlsb\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Convert XLSX → ODS (JSON/base64)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert/xlsx-to-ods",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file\": \"<base64-encoded content>\",\n  \"filename\": \"dados.xlsx\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Convert ODS → XLSX (JSON/base64)",
+      "request": {
+        "method": "POST",
+        "url": "{{base_url}}/api/v1/convert/ods-to-xlsx",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"file\": \"<base64-encoded content>\",\n  \"filename\": \"tabela.ods\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{base_url}}/healthz"
+      }
+    }
+  ]
+}
