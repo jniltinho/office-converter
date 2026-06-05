@@ -35,8 +35,13 @@ async def home() -> HTMLResponse:
     tags=['health'],
     summary='Liveness probe',
     description='Returns HTTP 200 with body ``ok``. Used by Docker HEALTHCHECK, Kubernetes liveness probes, and load balancers.',
-    response_description='Service is healthy',
-    responses={200: {'content': {'text/plain': {'example': 'ok'}}}},
+    response_class=Response,
+    responses={
+        200: {
+            'description': 'Service is healthy',
+            'content': {'text/plain': {'schema': {'type': 'string'}, 'example': 'ok'}},
+        }
+    },
 )
 async def healthz_get() -> Response:
     """Return a plain-text ``ok`` to signal the service is running.
@@ -52,6 +57,8 @@ async def healthz_get() -> Response:
     tags=['health'],
     summary='Liveness probe (HEAD)',
     description='Same as ``GET /healthz`` but without a response body. Useful for minimal-overhead health polling.',
+    response_class=Response,
+    responses={200: {'description': 'Service is healthy'}},
     include_in_schema=True,
 )
 async def healthz_head() -> Response:

@@ -27,51 +27,69 @@ from app.schemas import ConvertJsonRequest, ConvertJsonResponse, ErrorResponse
 router = APIRouter(prefix='/api/v1', tags=['conversion'])
 
 # ---------------------------------------------------------------------------
-# Shared OpenAPI fragments reused across all conversion endpoints
+# OpenAPI fragments — built per endpoint so examples match each conversion
 # ---------------------------------------------------------------------------
 
-_REQUEST_BODY_SPEC = {
-    'required': True,
-    'content': {
-        'multipart/form-data': {
-            'schema': {
-                'type': 'object',
-                'required': ['file'],
-                'properties': {
-                    'file': {
-                        'type': 'string',
-                        'format': 'binary',
-                        'description': 'The source spreadsheet file.',
-                    }
-                },
-            }
-        },
-        'application/json': {
-            'schema': ConvertJsonRequest.model_json_schema(),
-        },
+_B64 = 'UEsDBBQAAAAIAA=='
+_MIME_XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+_MIME_ODS = 'application/vnd.oasis.opendocument.spreadsheet'
+
+_MULTIPART_SCHEMA = {
+    'type': 'object',
+    'required': ['file'],
+    'properties': {
+        'file': {
+            'type': 'string',
+            'format': 'binary',
+            'description': 'The source spreadsheet file.',
+        }
     },
 }
 
-_SUCCESS_RESPONSE = {
-    200: {
-        'description': (
-            'Conversion successful. '
-            'Returns the converted file as a binary download (multipart request) '
-            'or a JSON envelope (JSON request or ``?format=json``).'
-        ),
+
+def _req_body(input_ext: str) -> dict:
+    """Request body spec with a filename example matching the source format."""
+    return {
+        'required': True,
         'content': {
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {
-                'schema': {'type': 'string', 'format': 'binary'}
-            },
-            'application/vnd.oasis.opendocument.spreadsheet': {
-                'schema': {'type': 'string', 'format': 'binary'}
-            },
+            'multipart/form-data': {'schema': _MULTIPART_SCHEMA},
             'application/json': {
-                'schema': ConvertJsonResponse.model_json_schema(),
+                'schema': ConvertJsonRequest.model_json_schema(),
+                'example': {'file': _B64, 'filename': f'report.{input_ext}'},
             },
         },
     }
-}
+
+
+def _success(output_ext: str, extra_binary_mime: str | None = None) -> dict:
+    """200 success response with a filename/content_type example matching the output format."""
+    mime = _MIME_XLSX if output_ext == 'xlsx' else _MIME_ODS
+    binary_content: dict = {}
+    if extra_binary_mime:
+        binary_content[extra_binary_mime] = {'schema': {'type': 'string', 'format': 'binary'}}
+    binary_content[mime] = {'schema': {'type': 'string', 'format': 'binary'}}
+    return {
+        200: {
+            'description': (
+                'Conversion successful. '
+                'Returns the converted file as a binary download (multipart request) '
+                'or a JSON envelope (JSON request or ``?format=json``).'
+            ),
+            'content': {
+                **binary_content,
+                'application/json': {
+                    'schema': ConvertJsonResponse.model_json_schema(),
+                    'example': {
+                        'success': True,
+                        'filename': f'report.{output_ext}',
+                        'content_type': mime,
+                        'size': 45231,
+                        'data': _B64,
+                    },
+                },
+            },
+        }
+    }
 
 _ERROR_RESPONSES = {
     400: {
@@ -115,8 +133,8 @@ _ERROR_RESPONSES = {
         'Append `?format=json` or send `Accept: application/json` to receive a JSON envelope '
         'instead of a binary download.'
     ),
-    responses={**_SUCCESS_RESPONSE, **_ERROR_RESPONSES},
-    openapi_extra={'requestBody': _REQUEST_BODY_SPEC},
+    responses={**_success('xlsx', extra_binary_mime=_MIME_ODS), **_ERROR_RESPONSES},
+    openapi_extra={'requestBody': _req_body('xlsb')},
 )
 async def convert_smart(request: Request, background_tasks: BackgroundTasks) -> Response:
     """Auto-detect the conversion direction from the uploaded file extension.
@@ -140,8 +158,8 @@ async def convert_smart(request: Request, background_tasks: BackgroundTasks) -> 
         'The uploaded file **must** have the `.xlsb` extension; any other extension returns HTTP 415.\n\n'
         'Accepts both `multipart/form-data` and `application/json` (base64) on the same URL.'
     ),
-    responses={**_SUCCESS_RESPONSE, **_ERROR_RESPONSES},
-    openapi_extra={'requestBody': _REQUEST_BODY_SPEC},
+    responses={**_success('xlsx'), **_ERROR_RESPONSES},
+    openapi_extra={'requestBody': _req_body('xlsb')},
 )
 async def convert_xlsb_to_xlsx(request: Request, background_tasks: BackgroundTasks) -> Response:
     """Convert a ``.xlsb`` file to ``.xlsx``.
@@ -164,8 +182,8 @@ async def convert_xlsb_to_xlsx(request: Request, background_tasks: BackgroundTas
         'The uploaded file **must** have the `.xlsx` extension; any other extension returns HTTP 415.\n\n'
         'Accepts both `multipart/form-data` and `application/json` (base64) on the same URL.'
     ),
-    responses={**_SUCCESS_RESPONSE, **_ERROR_RESPONSES},
-    openapi_extra={'requestBody': _REQUEST_BODY_SPEC},
+    responses={**_success('ods'), **_ERROR_RESPONSES},
+    openapi_extra={'requestBody': _req_body('xlsx')},
 )
 async def convert_xlsx_to_ods(request: Request, background_tasks: BackgroundTasks) -> Response:
     """Convert a ``.xlsx`` file to ``.ods``.
@@ -188,8 +206,8 @@ async def convert_xlsx_to_ods(request: Request, background_tasks: BackgroundTask
         'The uploaded file **must** have the `.ods` extension; any other extension returns HTTP 415.\n\n'
         'Accepts both `multipart/form-data` and `application/json` (base64) on the same URL.'
     ),
-    responses={**_SUCCESS_RESPONSE, **_ERROR_RESPONSES},
-    openapi_extra={'requestBody': _REQUEST_BODY_SPEC},
+    responses={**_success('xlsx'), **_ERROR_RESPONSES},
+    openapi_extra={'requestBody': _req_body('ods')},
 )
 async def convert_ods_to_xlsx(request: Request, background_tasks: BackgroundTasks) -> Response:
     """Convert a ``.ods`` file to ``.xlsx``.
