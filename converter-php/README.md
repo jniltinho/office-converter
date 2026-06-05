@@ -30,16 +30,49 @@ The container starts FrankenPHP in worker mode (Slim app):
 
 ```bash
 frankenphp run --config /tmp/Caddyfile --adapter caddyfile
-# (Caddyfile loads worker at /app/api/worker.php)
+# (Caddyfile loads worker at /app/api/public/index.php)
 ```
 
 Open `http://localhost:8080` in your browser.
 
-### PHP built-in server (local development)
+### FrankenPHP (local development — worker mode)
+
+If you have the [FrankenPHP binary](https://frankenphp.dev/docs/install/) installed locally, you can run the application in the same worker mode used in production.
+
+Create a local `Caddyfile`:
+
+```
+{
+    auto_https off
+}
+
+:8080 {
+    php_server {
+        worker {
+            file api/public/index.php
+            match *
+        }
+    }
+}
+```
+
+Then start the server:
+
+```bash
+frankenphp run --config Caddyfile --adapter caddyfile
+```
+
+Or use the simpler php-server subcommand (no worker loop — one process per request):
+
+```bash
+frankenphp php-server --listen :8080 --root api/public/
+```
+
+### PHP built-in server (fallback)
 
 ```bash
 # requires soffice in PATH
-php -d upload_max_filesize=100M -d post_max_size=101M -S 0.0.0.0:8080 api/router.php
+php -d upload_max_filesize=100M -d post_max_size=101M -S 0.0.0.0:8080 api/public/index.php
 ```
 
 Or simply:

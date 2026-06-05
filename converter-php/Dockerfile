@@ -4,7 +4,7 @@
 # Stage 0 — PHP dependencies (composer)
 #
 # Installs packages with --no-dev and regenerates the optimised classmap so
-# that any class added to api/src/ (including subdirectories) is always
+# that any class added to api/app/ (including subdirectories) is always
 # found without touching the committed vendor/. This stage uses the official
 # composer image and never ends up in the final image.
 # ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ RUN composer install \
         --no-scripts \
         --prefer-dist
 # Copy the full source so dump-autoload can scan all namespaces/subdirs
-COPY api/src ./src
+COPY api/app ./app
 RUN composer dump-autoload --optimize --no-dev
 
 # ---------------------------------------------------------------------------

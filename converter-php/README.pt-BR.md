@@ -30,16 +30,49 @@ O container inicia o FrankenPHP em modo worker (app Slim):
 
 ```bash
 frankenphp run --config /tmp/Caddyfile --adapter caddyfile
-# (Caddyfile carrega o worker em /app/api/worker.php)
+# (Caddyfile carrega o worker em /app/api/public/index.php)
 ```
 
 Acesse `http://localhost:8080` no navegador.
 
-### Servidor embutido do PHP (desenvolvimento local)
+### FrankenPHP (desenvolvimento local — modo worker)
+
+Se você tiver o [binário do FrankenPHP](https://frankenphp.dev/docs/install/) instalado localmente, pode rodar a aplicação no mesmo modo worker usado em produção.
+
+Crie um `Caddyfile` local:
+
+```
+{
+    auto_https off
+}
+
+:8080 {
+    php_server {
+        worker {
+            file api/public/index.php
+            match *
+        }
+    }
+}
+```
+
+Em seguida inicie o servidor:
+
+```bash
+frankenphp run --config Caddyfile --adapter caddyfile
+```
+
+Ou use o subcomando php-server para um modo mais simples (sem loop worker — um processo por requisição):
+
+```bash
+frankenphp php-server --listen :8080 --root api/public/
+```
+
+### Servidor embutido do PHP (alternativa)
 
 ```bash
 # requer soffice no PATH
-php -d upload_max_filesize=100M -d post_max_size=101M -S 0.0.0.0:8080 api/router.php
+php -d upload_max_filesize=100M -d post_max_size=101M -S 0.0.0.0:8080 api/public/index.php
 ```
 
 Ou simplesmente:

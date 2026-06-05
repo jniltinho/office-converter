@@ -4,7 +4,7 @@
 #
 # Starts the FrankenPHP application server in worker mode using the
 # standalone binary. The Slim-based application lives under /app/api/
-# (worker.php, router.php, src/). Worker mode keeps the PHP runtime in
+# (public/index.php, app/). Worker mode keeps the PHP runtime in
 # memory between requests.
 #
 # Configuration is read from the same OFFICE_* environment variables used
@@ -49,7 +49,7 @@ export OFFICE_CONVERSION_TIMEOUT="$CONV_TIMEOUT"
 
 echo "==> office-converter (PHP + FrankenPHP worker + Slim Framework)"
 echo "    frankenphp run --config /tmp/Caddyfile --adapter caddyfile"
-echo "    (global auto_https off; access log to stdout in JSON; worker /app/api/worker.php)"
+echo "    (global auto_https off; access log to stdout in JSON; worker /app/api/public/index.php)"
 echo "    max upload: ~${UPLOAD_MIB} MiB (post_max_size=${POST_MIB}M)"
 echo "    max concurrent conversions: ${MAX_CONC}"
 echo "    conversion timeout: ${CONV_TIMEOUT}"
@@ -62,8 +62,7 @@ echo
 # `auto_https off` is honored. This globally disables FrankenPHP's
 # automatic HTTPS / TLS / cert automation / redirects.
 #
-# Worker script is now at /app/api/worker.php (Slim Framework app).
-# `--worker` flag did.
+# Worker script is at /app/api/public/index.php (Slim Framework app).
 cat > /tmp/Caddyfile <<EOF
 {
 	auto_https off
@@ -82,7 +81,7 @@ cat > /tmp/Caddyfile <<EOF
 	php_server {
 		file_server off
 		worker {
-			file /app/api/worker.php
+			file /app/api/public/index.php
 			match *
 		}
 	}

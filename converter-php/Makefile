@@ -11,7 +11,7 @@
 #   make serve          # run the PHP built-in server locally (requires soffice in PATH)
 #   make docker-run     # run the container (PORT=9000 make docker-run)
 #   make clean          # remove temp artifacts
-#   make test-integration-php   # run full integration tests against php -S (api/router.php)
+#   make test-integration-php   # run full integration tests against php -S (api/public/index.php)
 #
 # Environment variables (passed through to the server):
 #   See env.example for the full list with explanations.
@@ -39,7 +39,7 @@ build-debug: build
 #   OFFICE_PORT=9000 make serve
 .PHONY: serve
 serve:
-	@php -d upload_max_filesize=100M -d post_max_size=101M -d memory_limit=256M -S 0.0.0.0:$${OFFICE_PORT:-8080} api/router.php
+	@php -d upload_max_filesize=100M -d post_max_size=101M -d memory_limit=256M -S 0.0.0.0:$${OFFICE_PORT:-8080} api/public/index.php
 
 # Run via the entrypoint wrapper (respects all OFFICE_* env vars exactly like Docker).
 .PHONY: run
@@ -126,7 +126,7 @@ docker-up: docker-build docker-run
 help:
 	@echo "Available targets (Slim + FrankenPHP PHP port):"
 	@echo "  make build                    No-op (PHP does not require compilation)"
-	@echo "  make serve                    Start php -S on api/router.php (:8080 or OFFICE_PORT=...)"
+	@echo "  make serve                    Start php -S on api/public/index.php (:8080 or OFFICE_PORT=...)"
 	@echo "  make run                      Alias for serve"
 	@echo "  make fmt / make lint          Run php -l on the PHP sources (api/ + legacy)"
 	@echo "  make clean                    Remove temp conversion dirs and logs"

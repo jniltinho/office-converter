@@ -147,7 +147,7 @@ start_php_server() {
   echo "==> Starting PHP built-in server on 127.0.0.1:$TEST_PORT (background)"
   # Use the same port/host convention as the binary path for compatibility with the test harness.
   php -d upload_max_filesize=100M -d post_max_size=101M -d memory_limit=256M \
-      -S 127.0.0.1:${TEST_PORT} "$ROOT_DIR/api/router.php" > "$ROOT_DIR/test-server.log" 2>&1 &
+      -S 127.0.0.1:${TEST_PORT} "$ROOT_DIR/api/public/index.php" > "$ROOT_DIR/test-server.log" 2>&1 &
   server_pid=$!
   need_cleanup=1
   echo "    pid: $server_pid (log: test-server.log)"

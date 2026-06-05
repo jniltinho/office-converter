@@ -20,10 +20,44 @@ A complete and well-commented template is available in the root of the repositor
 - The Docker image runs FrankenPHP in worker mode. FrankenPHP is built on Caddy and can natively serve HTTPS (set `SERVER_NAME` / mount certs via FrankenPHP config). The local `php -S` server does not support HTTPS — use a reverse proxy if you need it locally.
 - Swagger UI and `/api/v1/openapi.json` endpoints are not provided (feature removed).
 
-### Local (PHP built-in server)
+### Local (FrankenPHP — worker mode, recommended)
+
+If you have the [FrankenPHP binary](https://frankenphp.dev/docs/install/) installed, you can run the application locally in the same persistent-worker mode used in production. The Slim app is bootstrapped once; FrankenPHP handles every subsequent request without re-loading PHP.
+
+Create a local `Caddyfile` at the project root:
+
+```
+{
+    auto_https off
+}
+
+:8080 {
+    php_server {
+        worker {
+            file api/public/index.php
+            match *
+        }
+    }
+}
+```
+
+Then start the server:
 
 ```bash
-php -d upload_max_filesize=100M -d post_max_size=101M -S 0.0.0.0:8080 api/router.php
+OFFICE_MAX_UPLOAD_SIZE=104857600 OFFICE_MAX_CONCURRENT_CONVERSIONS=2 \
+  frankenphp run --config Caddyfile --adapter caddyfile
+```
+
+For a lighter non-worker mode (one process per request, similar to `php -S`):
+
+```bash
+frankenphp php-server --listen :8080 --root api/public/
+```
+
+### Local (PHP built-in server — fallback)
+
+```bash
+php -d upload_max_filesize=100M -d post_max_size=101M -S 0.0.0.0:8080 api/public/index.php
 # or
 make serve
 ```
@@ -31,7 +65,7 @@ make serve
 ### Using Make
 
 ```bash
-make serve          # starts php -S on api/router.php (respects OFFICE_*)
+make serve          # starts php -S on api/public/index.php (respects OFFICE_*)
 make docker-build
 make docker-run
 ```
@@ -223,7 +257,7 @@ curl -F "file=@spreadsheet.xlsb" "http://localhost:8080/api/v1/convert?format=js
 | `make docker-build`           | Build the `debian:12-slim` + FrankenPHP image         |
 | `make docker-run`             | Run container (`PORT=9000 make docker-run`)           |
 | `make docker-up`              | Build + run                                           |
-| `make fmt` / `make lint`      | `php -l` on api/*.php + api/src/*.php                 |
+| `make fmt` / `make lint`      | `php -l` on api/*.php + api/app/*.php                 |
 | `make test-integration-php`   | Full integration tests against local php -S           |
 | `make test-integration-docker`| Full integration tests inside the Docker image        |
 | `make generate-samples`       | Generate testdata/sample.* (needs soffice)            |
