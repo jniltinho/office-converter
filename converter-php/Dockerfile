@@ -1,17 +1,39 @@
 # syntax=docker/dockerfile:1
 
-# Single-stage image using the requested base.
+# ---------------------------------------------------------------------------
+# Stage 0 — PHP dependencies (composer)
+#
+# Installs packages with --no-dev and regenerates the optimised classmap so
+# that any class added to api/src/ (including subdirectories) is always
+# found without touching the committed vendor/. This stage uses the official
+# composer image and never ends up in the final image.
+# ---------------------------------------------------------------------------
+FROM composer:2 AS vendor-build
+WORKDIR /build
+COPY api/composer.json api/composer.lock ./
+# Install without scripts first so we get a clean vendor tree
+RUN composer install \
+        --no-dev \
+        --no-interaction \
+        --no-scripts \
+        --prefer-dist
+# Copy the full source so dump-autoload can scan all namespaces/subdirs
+COPY api/src ./src
+RUN composer dump-autoload --optimize --no-dev
+
+# ---------------------------------------------------------------------------
+# Stage 1 — Runtime image
+#
 # Base:     debian:12-slim
 # PHP:      FrankenPHP standalone binary (frankenphp-linux-x86_64-gnu v1.12.4)
 #           which embeds PHP 8.5 and Caddy 2.11. The "gnu" build uses the
-#           system glibc from the Debian base, so we don't need a static
-#           binary nor a separate php apt package.
+#           system glibc from the Debian base.
 #           The binary is UPX-compressed at build time (~165 MB -> ~41 MB)
 #           to reduce the final image size.
 # Convert:  LibreOffice Calc in headless mode.
 #
 # Reference: https://frankenphp.dev/docs/
-
+# ---------------------------------------------------------------------------
 FROM debian:12-slim
 
 # ----------------------------------------------------------------------------
@@ -64,13 +86,6 @@ RUN apt-get update \
 # Download, verify, UPX-compress and install the FrankenPHP binary.
 # We download a static UPX, pack the binary in-place (reduces ~165 MB to ~41 MB),
 # discard UPX, then remove curl + xz (build-only tools).
-# We do not use the static (musl) build: the Debian base gives us a perfectly
-# good glibc, the gnu build matches the glibc-based distro, and UPX works well.
-#
-# PHP dependencies are pre-installed using the official `composer` Docker image:
-#   docker run --rm -i -v $PWD:/app composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader -d /app/api
-# The resulting api/vendor/ (and composer.lock) is included via the COPY api/ below.
-# No composer installation or `composer install` runs during the app image build.
 # ----------------------------------------------------------------------------
 RUN curl -fsSL -o /tmp/frankenphp "${FRANKENPHP_URL}" \
  && echo "${FRANKENPHP_SHA256}  /tmp/frankenphp" | sha256sum -c - \
@@ -97,10 +112,13 @@ RUN useradd --create-home --uid 10001 appuser
 USER appuser
 WORKDIR /app
 
-# Copy the startup wrapper and the entire Slim-based application tree
-# (including pre-installed vendor/ from `composer` Docker image).
+# Copy the startup wrapper and the application source tree.
 COPY --chown=appuser:appuser entrypoint.sh /app/
 COPY --chown=appuser:appuser api/ /app/api/
+
+# Override the committed vendor/ with the freshly generated one from the
+# composer build stage (correct classmap, no dev dependencies).
+COPY --chown=appuser:appuser --from=vendor-build /build/vendor /app/api/vendor
 
 # Make the entrypoint executable (in case the host checkout had it without +x).
 RUN chmod +x /app/entrypoint.sh

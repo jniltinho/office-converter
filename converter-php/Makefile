@@ -53,7 +53,7 @@ generate:
 # PHP lint (syntax check)
 .PHONY: fmt
 fmt:
-	@php -l api/router.php api/worker.php api/index.php api/src/*.php 2>/dev/null || true
+	@find api -name "*.php" -not -path "*/vendor/*" | xargs php -l 2>/dev/null || true
 	@echo "PHP syntax check done."
 
 .PHONY: lint
